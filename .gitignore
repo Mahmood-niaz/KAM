@@ -1,0 +1,36 @@
+# Secrets (API keys - never commit!)
+Secrets.plist
+**/Secrets.plist
+
+# Xcode
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+env/
+venv/
+*.egg-info/
+
+# Model conversion artifacts (keep .mlpackage)
+*.hdf5
+*.pth
+*.pt
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Build artifacts
+build/
+.claude/

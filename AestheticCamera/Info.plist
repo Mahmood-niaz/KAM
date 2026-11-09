@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSCameraUsageDescription</key>
+    <string>AestheticCamera needs camera access to analyze composition and capture photos with optimal framing.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>AestheticCamera uses motion data to keep the viewfinder level indicator aligned.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>AestheticCamera needs access to save captured photos to your photo library.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>AestheticCamera needs access to display your photos in the gallery.</string>
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIColorName</key>
+        <string>LaunchScreenBackground</string>
+        <key>UIImageName</key>
+        <string>LaunchIcon</string>
+    </dict>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+    <key>UIRequiresFullScreen</key>
+    <true/>
+</dict>
+</plist>
