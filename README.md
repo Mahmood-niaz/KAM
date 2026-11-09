@@ -1,6 +1,17 @@
-# Aesthetic Camera
+# KAM (Aesthetic Camera)
 
-An iOS camera app that uses AI-powered composition analysis to help capture aesthetically pleasing photos.
+[![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-blue)](#requirements)
+[![Swift](https://img.shields.io/badge/Swift-5-orange)](#requirements)
+[![Visibility](https://img.shields.io/badge/repo-public-brightgreen)](#)
+
+An iOS camera app that scores framing in real time and uses Claude AI to pick the strongest shot and crop. The app keeps your photos on the device and only sends images to Claude when you ask for a crop suggestion.
+
+## Highlights
+
+- **Live feedback:** composition scores update as you frame the shot, with directional hints ("move left") and a subject highlight.
+- **Best-shot selection:** Smart Pan captures wide and telephoto pairs as you move, and Claude chooses the best one.
+- **Crops that respect your ratio:** Claude's suggestions are constrained to the aspect ratio you pick.
+- **Hands-free capture:** auto-capture fires once the composition score passes your threshold.
 
 ## Features
 
@@ -23,8 +34,8 @@ An iOS camera app that uses AI-powered composition analysis to help capture aest
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/envy7/aesthetic-camera.git
-   cd aesthetic-camera
+   git clone https://github.com/Mahmood-niaz/KAM.git
+   cd KAM
    ```
 
 2. Create `Secrets.plist` in the `AestheticCamera/` directory:
