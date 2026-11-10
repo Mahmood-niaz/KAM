@@ -211,3 +211,7 @@ class GalleryViewModel: ObservableObject {
         self.isLoading = false
     }
 }
+
+#Preview {
+    GalleryView()
+}

@@ -6,21 +6,13 @@ final class PhotoLibraryService {
 
     private init() {}
 
-    func savePhoto(_ image: UIImage, completion: @escaping (Result<Void, Error>) -> Void) {
+    /// Saves the original encoded photo data (as delivered by AVCapturePhoto) without re-encoding,
+    /// so the Photos app receives the full sensor resolution and original metadata.
+    func savePhoto(_ data: Data, completion: @escaping (Result<Void, Error>) -> Void) {
         PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
             guard status == .authorized || status == .limited else {
                 let error = NSError(domain: "PhotoLibraryService", code: 1,
                                    userInfo: [NSLocalizedDescriptionKey: "Photo library access denied"])
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
-                return
-            }
-
-            // Convert to maximum quality JPEG data
-            guard let jpegData = image.jpegData(compressionQuality: 1.0) else {
-                let error = NSError(domain: "PhotoLibraryService", code: 3,
-                                   userInfo: [NSLocalizedDescriptionKey: "Failed to create JPEG data"])
                 DispatchQueue.main.async {
                     completion(.failure(error))
                 }
@@ -32,7 +24,7 @@ final class PhotoLibraryService {
                 options.shouldMoveFile = false
 
                 let creationRequest = PHAssetCreationRequest.forAsset()
-                creationRequest.addResource(with: .photo, data: jpegData, options: options)
+                creationRequest.addResource(with: .photo, data: data, options: options)
             } completionHandler: { success, error in
                 DispatchQueue.main.async {
                     if let error = error {

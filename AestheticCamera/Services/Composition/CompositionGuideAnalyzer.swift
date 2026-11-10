@@ -152,6 +152,8 @@ final class CompositionGuideAnalyzer {
         // If subject is too small, suggest zooming in
         if subjectSize < minSubjectSize {
             switch currentLens {
+            case .ultrawide:
+                return .wide
             case .wide:
                 return .zoom2x
             case .zoom2x:
@@ -166,8 +168,10 @@ final class CompositionGuideAnalyzer {
         // If subject is too large (cropped), suggest zooming out
         if subjectSize > maxSubjectSize {
             switch currentLens {
-            case .wide:
+            case .ultrawide:
                 return nil // Already at widest
+            case .wide:
+                return .ultrawide
             case .zoom2x:
                 return .wide
             case .telephoto:

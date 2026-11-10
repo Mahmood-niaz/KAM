@@ -11,6 +11,11 @@ enum AspectRatio: String, CaseIterable, Identifiable {
 
     var displayName: String { rawValue }
 
+    var next: AspectRatio {
+        let all = AspectRatio.allCases
+        return all[(all.firstIndex(of: self)! + 1) % all.count]
+    }
+
     /// Returns the aspect ratio value (width / height) for landscape orientation
     var landscapeRatio: CGFloat {
         switch self {

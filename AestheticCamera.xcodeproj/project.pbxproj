@@ -18,8 +18,6 @@
 		AAA00017 /* LeadingLinesAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00018 /* LeadingLinesAnalyzer.swift */; };
 		AAA00019 /* NIMAScorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00020 /* NIMAScorer.swift */; };
 		AAA00021 /* CompositionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00022 /* CompositionEngine.swift */; };
-		AAA00023 /* AutoCaptureController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00024 /* AutoCaptureController.swift */; };
-		AAA00025 /* MotionAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00026 /* MotionAnalyzer.swift */; };
 		AAA00027 /* CameraViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00028 /* CameraViewModel.swift */; };
 		AAA00029 /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00030 /* CameraPreviewView.swift */; };
 		AAA00031 /* CameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA00032 /* CameraView.swift */; };
@@ -29,17 +27,9 @@
 		FDD07E222F17576400BE4932 /* CompositionGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDD07E212F17576400BE4932 /* CompositionGuide.swift */; };
 		BBB00001 /* CompositionGuideAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00002 /* CompositionGuideAnalyzer.swift */; };
 		BBB00003 /* CompositionGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB00004 /* CompositionGuideView.swift */; };
-		CCC00001 /* ClaudeAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCC00002 /* ClaudeAPIService.swift */; };
-		CCC00003 /* CropPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCC00004 /* CropPreviewView.swift */; };
 		CCC00005 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = CCC00006 /* Secrets.plist */; };
-		DDD00001 /* SceneCaptureController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD00002 /* SceneCaptureController.swift */; };
-		DDD00003 /* SceneResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD00004 /* SceneResultView.swift */; };
 		EEE00001 /* GalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE00002 /* GalleryView.swift */; };
 		FFF00001 /* AspectRatio.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF00002 /* AspectRatio.swift */; };
-		FFF00003 /* DetectedSubject.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF00004 /* DetectedSubject.swift */; };
-		FFF00005 /* PhotoPair.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF00006 /* PhotoPair.swift */; };
-		FFF00007 /* SmartPanState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF00008 /* SmartPanState.swift */; };
-		FFF00009 /* SmartPanController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF00010 /* SmartPanController.swift */; };
 		AAC00001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AAC00002 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -55,8 +45,6 @@
 		AAA00018 /* LeadingLinesAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadingLinesAnalyzer.swift; sourceTree = "<group>"; };
 		AAA00020 /* NIMAScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NIMAScorer.swift; sourceTree = "<group>"; };
 		AAA00022 /* CompositionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionEngine.swift; sourceTree = "<group>"; };
-		AAA00024 /* AutoCaptureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCaptureController.swift; sourceTree = "<group>"; };
-		AAA00026 /* MotionAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionAnalyzer.swift; sourceTree = "<group>"; };
 		AAA00028 /* CameraViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraViewModel.swift; sourceTree = "<group>"; };
 		AAA00030 /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
 		AAA00032 /* CameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraView.swift; sourceTree = "<group>"; };
@@ -68,17 +56,9 @@
 		FDD07E212F17576400BE4932 /* CompositionGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionGuide.swift; sourceTree = "<group>"; };
 		BBB00002 /* CompositionGuideAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionGuideAnalyzer.swift; sourceTree = "<group>"; };
 		BBB00004 /* CompositionGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionGuideView.swift; sourceTree = "<group>"; };
-		CCC00002 /* ClaudeAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAPIService.swift; sourceTree = "<group>"; };
-		CCC00004 /* CropPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CropPreviewView.swift; sourceTree = "<group>"; };
 		CCC00006 /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Secrets.plist; sourceTree = "<group>"; };
-		DDD00002 /* SceneCaptureController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneCaptureController.swift; sourceTree = "<group>"; };
-		DDD00004 /* SceneResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneResultView.swift; sourceTree = "<group>"; };
 		EEE00002 /* GalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryView.swift; sourceTree = "<group>"; };
 		FFF00002 /* AspectRatio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AspectRatio.swift; sourceTree = "<group>"; };
-		FFF00004 /* DetectedSubject.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetectedSubject.swift; sourceTree = "<group>"; };
-		FFF00006 /* PhotoPair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPair.swift; sourceTree = "<group>"; };
-		FFF00008 /* SmartPanState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartPanState.swift; sourceTree = "<group>"; };
-		FFF00010 /* SmartPanController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartPanController.swift; sourceTree = "<group>"; };
 		AAC00002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -131,9 +111,6 @@
 				AAA00004 /* CompositionScore.swift */,
 				AAA00006 /* CameraLens.swift */,
 				FFF00002 /* AspectRatio.swift */,
-				FFF00004 /* DetectedSubject.swift */,
-				FFF00006 /* PhotoPair.swift */,
-				FFF00008 /* SmartPanState.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -143,7 +120,6 @@
 			children = (
 				AAA00047 /* Camera */,
 				AAA00048 /* Composition */,
-				AAA00049 /* AutoCapture */,
 				CCC00007 /* AI */,
 			);
 			path = Services;
@@ -152,7 +128,6 @@
 		CCC00007 /* AI */ = {
 			isa = PBXGroup;
 			children = (
-				CCC00002 /* ClaudeAPIService.swift */,
 			);
 			path = AI;
 			sourceTree = "<group>";
@@ -162,8 +137,6 @@
 			children = (
 				AAA00008 /* CameraService.swift */,
 				AAA00010 /* PhotoCaptureDelegate.swift */,
-				DDD00002 /* SceneCaptureController.swift */,
-				FFF00010 /* SmartPanController.swift */,
 			);
 			path = Camera;
 			sourceTree = "<group>";
@@ -180,15 +153,6 @@
 				BBB00002 /* CompositionGuideAnalyzer.swift */,
 			);
 			path = Composition;
-			sourceTree = "<group>";
-		};
-		AAA00049 /* AutoCapture */ = {
-			isa = PBXGroup;
-			children = (
-				AAA00024 /* AutoCaptureController.swift */,
-				AAA00026 /* MotionAnalyzer.swift */,
-			);
-			path = AutoCapture;
 			sourceTree = "<group>";
 		};
 		AAA00050 /* ViewModels */ = {
@@ -223,7 +187,6 @@
 		DDD00005 /* SceneCapture */ = {
 			isa = PBXGroup;
 			children = (
-				DDD00004 /* SceneResultView.swift */,
 			);
 			path = SceneCapture;
 			sourceTree = "<group>";
@@ -231,7 +194,6 @@
 		CCC00008 /* CropPreview */ = {
 			isa = PBXGroup;
 			children = (
-				CCC00004 /* CropPreviewView.swift */,
 			);
 			path = CropPreview;
 			sourceTree = "<group>";
@@ -333,8 +295,6 @@
 				AAA00017 /* LeadingLinesAnalyzer.swift in Sources */,
 				AAA00019 /* NIMAScorer.swift in Sources */,
 				AAA00021 /* CompositionEngine.swift in Sources */,
-				AAA00023 /* AutoCaptureController.swift in Sources */,
-				AAA00025 /* MotionAnalyzer.swift in Sources */,
 				AAA00027 /* CameraViewModel.swift in Sources */,
 				AAA00029 /* CameraPreviewView.swift in Sources */,
 				AAA00031 /* CameraView.swift in Sources */,
@@ -343,16 +303,8 @@
 				AAA00037 /* SettingsView.swift in Sources */,
 				BBB00001 /* CompositionGuideAnalyzer.swift in Sources */,
 				BBB00003 /* CompositionGuideView.swift in Sources */,
-				CCC00001 /* ClaudeAPIService.swift in Sources */,
-				CCC00003 /* CropPreviewView.swift in Sources */,
-				DDD00001 /* SceneCaptureController.swift in Sources */,
-				DDD00003 /* SceneResultView.swift in Sources */,
 				EEE00001 /* GalleryView.swift in Sources */,
 				FFF00001 /* AspectRatio.swift in Sources */,
-				FFF00003 /* DetectedSubject.swift in Sources */,
-				FFF00005 /* PhotoPair.swift in Sources */,
-				FFF00007 /* SmartPanState.swift in Sources */,
-				FFF00009 /* SmartPanController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
