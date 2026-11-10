@@ -1,15 +1,21 @@
 import SwiftUI
 import CoreMotion
+import UIKit
 
 struct CameraView: View {
     @StateObject private var viewModel = CameraViewModel()
     @StateObject private var levelMotion = CameraLevelMotionManager()
-    @State private var showGallery = false
+    @State private var iconAngle: Double = 0
 
     var body: some View {
         ZStack {
             // Camera preview
-            CameraPreviewView(session: viewModel.cameraService.captureSession)
+            CameraPreviewView(
+                session: viewModel.cameraService.captureSession,
+                onTap: { point, devicePoint in
+                    viewModel.focus(atViewPoint: point, devicePoint: devicePoint)
+                }
+            )
                 .ignoresSafeArea()
 
             // Subject highlight overlay (only when hints enabled)
@@ -37,20 +43,26 @@ struct CameraView: View {
                     .animation(.easeOut(duration: 0.1), value: viewModel.showCaptureFlash)
             }
 
-            // Scene capture overlay
-            if viewModel.isSceneCaptureActive {
-                sceneCaptureOverlay
-            }
+            // Tap-to-focus indicator with exposure slider
+            ZStack {
+                if let point = viewModel.focusIndicatorPoint {
+                    FocusIndicatorView(bias: Binding(
+                        get: { viewModel.exposureBias },
+                        set: { viewModel.setExposureBias($0) }
+                    ))
+                    .position(point)
+                }
 
-            // Smart pan overlay
-            if viewModel.smartPanState != .idle {
-                smartPanOverlay
+                // Countdown
+                if let countdown = viewModel.countdown {
+                    Text("\(countdown)")
+                        .font(.system(size: 96, weight: .thin))
+                        .foregroundColor(.white)
+                        .rotationEffect(.degrees(iconAngle))
+                }
             }
-
-            // Hold Still overlay
-            if viewModel.showHoldStillOverlay {
-                holdStillOverlay
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
 
             // UI Overlays
             VStack {
@@ -59,8 +71,8 @@ struct CameraView: View {
 
                 Spacer()
 
-                // Composition guidance overlay (only when hints enabled and not in scene capture)
-                if viewModel.showHints && !viewModel.isSceneCaptureActive {
+                // Composition guidance overlay (only when hints enabled)
+                if viewModel.showHints {
                     CompositionGuideView(
                         guide: viewModel.compositionGuide,
                         onLensTap: { lens in
@@ -79,19 +91,22 @@ struct CameraView: View {
                     .padding(.bottom, 8)
                 }
 
-                // Bottom controls (hide during scene capture and smart pan)
-                if !viewModel.isSceneCaptureActive && viewModel.smartPanState == .idle {
-                    bottomControls
-                }
+                bottomControls
             }
         }
         .onAppear {
+            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+            updateIconAngle()
             levelMotion.start()
             viewModel.startCamera()
         }
         .onDisappear {
+            UIDevice.current.endGeneratingDeviceOrientationNotifications()
             levelMotion.stop()
             viewModel.stopCamera()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            updateIconAngle()
         }
         .sheet(isPresented: $viewModel.showSettings) {
             SettingsView(viewModel: viewModel)
@@ -104,250 +119,18 @@ struct CameraView: View {
         } message: {
             Text(viewModel.errorMessage ?? "Unknown error")
         }
-        .fullScreenCover(isPresented: $viewModel.showCropPreview) {
-            if let image = viewModel.imageForCrop,
-               let suggestion = viewModel.cropSuggestion {
-                CropPreviewView(
-                    image: image,
-                    cropSuggestion: suggestion,
-                    onAccept: { croppedImage in
-                        viewModel.acceptCrop(croppedImage)
-                    },
-                    onReject: {
-                        viewModel.rejectCrop()
-                    }
-                )
-            }
-        }
-        .fullScreenCover(isPresented: $viewModel.showSceneResult) {
-            if let image = viewModel.sceneResultImage,
-               let crop = viewModel.sceneResultCrop {
-                SceneResultView(
-                    originalImage: image,
-                    cropSuggestion: crop,
-                    selectionReason: viewModel.sceneResultReason,
-                    onSave: { _ in
-                        viewModel.saveSceneResult()
-                    },
-                    onDiscard: {
-                        viewModel.discardSceneResult()
-                    }
-                )
-            }
-        }
-        .fullScreenCover(isPresented: $showGallery) {
-            GalleryView()
-        }
     }
 
-    // MARK: - Scene Capture Overlay
-
-    private var sceneCaptureOverlay: some View {
-        VStack {
-            // Visual guide at top
-            if !viewModel.isProcessingScene {
-                sceneGuideView
-                    .padding(.top, 100)
-            }
-
-            Spacer()
-
-            VStack(spacing: 20) {
-                if viewModel.isProcessingScene {
-                    // Processing state
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(1.5)
-                    Text("Analyzing \(viewModel.sceneCapturedCount) photos...")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                } else {
-                    // Photo count
-                    Text("\(viewModel.sceneCapturedCount) photos captured")
-                        .font(.headline)
-                        .foregroundColor(.white)
-
-                    Text("Pan and tap to capture different angles")
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.7))
-
-                    // Capture button
-                    Button {
-                        viewModel.captureScenePhoto()
-                    } label: {
-                        ZStack {
-                            Circle()
-                                .stroke(Color.yellow, lineWidth: 4)
-                                .frame(width: 70, height: 70)
-
-                            Circle()
-                                .fill(Color.yellow)
-                                .frame(width: 58, height: 58)
-                        }
-                    }
-
-                    // Action buttons
-                    HStack(spacing: 16) {
-                        Button {
-                            viewModel.cancelSceneCapture()
-                        } label: {
-                            Text("Cancel")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Color.white.opacity(0.2))
-                                .clipShape(Capsule())
-                        }
-
-                        Button {
-                            viewModel.finishSceneCapture()
-                        } label: {
-                            Text("Done")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundColor(.black)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(viewModel.sceneCapturedCount >= 2 ? Color.yellow : Color.gray)
-                                .clipShape(Capsule())
-                        }
-                        .disabled(viewModel.sceneCapturedCount < 2)
-                    }
-                    .padding(.horizontal)
-                }
-            }
-            .padding(24)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .padding()
+    private func updateIconAngle() {
+        let angle: Double
+        switch UIDevice.current.orientation {
+        case .landscapeLeft: angle = 90
+        case .portrait, .landscapeRight, .portraitUpsideDown: angle = 0
+        default: return
         }
-    }
-
-    // Visual pan guide
-    private var sceneGuideView: some View {
-        GeometryReader { geometry in
-            let width = geometry.size.width - 80
-            let centerX = geometry.size.width / 2
-            let indicatorX = centerX + (viewModel.sceneGuideOffset * width / 2)
-
-            ZStack {
-                // Guide track
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.white.opacity(0.3))
-                    .frame(width: width, height: 8)
-
-                // Center marker
-                Rectangle()
-                    .fill(Color.white.opacity(0.5))
-                    .frame(width: 2, height: 16)
-
-                // Position indicator
-                Circle()
-                    .fill(Color.yellow)
-                    .frame(width: 20, height: 20)
-                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-                    .position(x: indicatorX, y: geometry.size.height / 2)
-            }
-            .frame(width: geometry.size.width, height: 30)
+        withAnimation(.easeInOut(duration: 0.3)) {
+            iconAngle = angle
         }
-        .frame(height: 30)
-        .padding(.horizontal, 40)
-    }
-
-    // MARK: - Smart Pan Overlay
-
-    private var smartPanOverlay: some View {
-        VStack {
-            Spacer()
-
-            VStack(spacing: 20) {
-                if viewModel.isProcessingSmartPan {
-                    // Processing state
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(1.5)
-                    Text("Analyzing \(viewModel.smartPanPairsCount) subject pairs...")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                } else {
-                    // Status text
-                    Text(viewModel.smartPanState.statusText)
-                        .font(.headline)
-                        .foregroundColor(.white)
-
-                    // Pairs count
-                    if viewModel.smartPanPairsCount > 0 {
-                        Text("\(viewModel.smartPanPairsCount) subject\(viewModel.smartPanPairsCount == 1 ? "" : "s") captured")
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-
-                    // Action buttons
-                    HStack(spacing: 16) {
-                        Button {
-                            viewModel.cancelSmartPan()
-                        } label: {
-                            Text("Cancel")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(Color.white.opacity(0.2))
-                                .clipShape(Capsule())
-                        }
-
-                        Button {
-                            viewModel.stopSmartPan()
-                        } label: {
-                            Text("Done")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundColor(.black)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(viewModel.smartPanPairsCount >= 1 ? Color.cyan : Color.gray)
-                                .clipShape(Capsule())
-                        }
-                        .disabled(viewModel.smartPanPairsCount < 1)
-                    }
-                    .padding(.horizontal)
-                }
-            }
-            .padding(24)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .padding()
-        }
-    }
-
-    // MARK: - Hold Still Overlay
-
-    private var holdStillOverlay: some View {
-        VStack {
-            Spacer()
-
-            HStack {
-                Spacer()
-
-                VStack(spacing: 8) {
-                    Image(systemName: "hand.raised.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(.yellow)
-
-                    Text("Hold Still")
-                        .font(.headline.weight(.bold))
-                        .foregroundColor(.white)
-                }
-                .padding(24)
-                .background(Color.black.opacity(0.7))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                Spacer()
-            }
-
-            Spacer()
-        }
-        .transition(.opacity)
-        .animation(.easeInOut(duration: 0.2), value: viewModel.showHoldStillOverlay)
     }
 
     // MARK: - Top Bar
@@ -361,6 +144,7 @@ struct CameraView: View {
                 Image(systemName: "gearshape.fill")
                     .font(.title2)
                     .foregroundColor(.white)
+                    .rotationEffect(.degrees(iconAngle))
                     .padding(12)
                     .background(.ultraThinMaterial)
                     .clipShape(Circle())
@@ -368,26 +152,30 @@ struct CameraView: View {
 
             Spacer()
 
-            // Hints toggle
+            // Grid toggle
             Button {
-                viewModel.showHints.toggle()
+                let next = viewModel.gridType.next
+                viewModel.gridType = next
+                viewModel.showGrid = next != .none
             } label: {
-                Image(systemName: viewModel.showHints ? "lightbulb.fill" : "lightbulb")
+                Image(systemName: viewModel.showGrid ? "grid" : "grid.circle")
                     .font(.title2)
-                    .foregroundColor(viewModel.showHints ? .yellow : .white)
+                    .foregroundColor(.white)
+                    .rotationEffect(.degrees(iconAngle))
                     .padding(12)
                     .background(.ultraThinMaterial)
                     .clipShape(Circle())
             }
 
-            // Grid toggle
+            // Aspect ratio toggle
             Button {
-                viewModel.showGrid.toggle()
+                viewModel.selectedAspectRatio = viewModel.selectedAspectRatio.next
             } label: {
-                Image(systemName: viewModel.showGrid ? "grid" : "grid.circle")
-                    .font(.title2)
+                Text(viewModel.selectedAspectRatio.displayName)
+                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
                     .foregroundColor(.white)
-                    .padding(12)
+                    .rotationEffect(.degrees(iconAngle))
+                    .frame(width: 52, height: 52)
                     .background(.ultraThinMaterial)
                     .clipShape(Circle())
             }
@@ -399,23 +187,7 @@ struct CameraView: View {
 
     private var bottomControls: some View {
         VStack(spacing: 16) {
-            // Lens picker
-            LensPickerView(
-                currentLens: viewModel.currentLens,
-                onLensSelected: { lens in
-                    viewModel.switchLens(to: lens)
-                }
-            )
-
-            // Main control row - changes based on mode
-            switch viewModel.captureMode {
-            case .singleShot:
-                singleShotControls
-            case .sceneCapture:
-                sceneCaptureControls
-            case .smartPan:
-                smartPanControls
-            }
+            shutterControls
 
             // Capture count
             if viewModel.captureCount > 0 {
@@ -427,151 +199,41 @@ struct CameraView: View {
         .padding(.bottom, 30)
     }
 
-    // MARK: - Single Shot Controls (v3)
+    private var shutterControls: some View {
+        GeometryReader { geometry in
+            let sideWidth = (geometry.size.width - 70) / 2
 
-    private var singleShotControls: some View {
-        HStack {
-            // Gallery preview + AI crop button (left)
-            VStack(spacing: 8) {
+            HStack(spacing: 0) {
+                LensPickerView(
+                    currentLens: viewModel.currentLens,
+                    iconAngle: iconAngle,
+                    onLensSelected: { lens in
+                        viewModel.switchLens(to: lens)
+                    }
+                )
+                .frame(width: sideWidth)
+                .opacity(0.7)
+
                 Button {
-                    showGallery = true
+                    viewModel.captureManually()
                 } label: {
-                    if let lastImage = viewModel.lastCapturedImage {
-                        Image(uiImage: lastImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 50, height: 50)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.white, lineWidth: 2)
-                            )
-                    } else {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(width: 50, height: 50)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .foregroundColor(.white.opacity(0.5))
-                            )
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white, lineWidth: 4)
+                            .frame(width: 70, height: 70)
+
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 58, height: 58)
                     }
                 }
 
-                // AI Crop button (only shows when image exists)
-                if viewModel.lastCapturedImage != nil {
-                    Button {
-                        viewModel.requestCropSuggestion()
-                    } label: {
-                        if viewModel.isRequestingCrop {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .frame(width: 36, height: 36)
-                        } else {
-                            Image(systemName: "wand.and.stars")
-                                .font(.system(size: 16))
-                                .foregroundColor(.white)
-                                .frame(width: 36, height: 36)
-                                .background(Color.purple.opacity(0.8))
-                                .clipShape(Circle())
-                        }
-                    }
-                    .disabled(viewModel.isRequestingCrop)
-                }
+                FeatureButtonBox(iconAngle: iconAngle, viewModel: viewModel)
+                    .frame(width: sideWidth)
             }
-
-            Spacer()
-
-            // Manual capture button (center, large)
-            Button {
-                viewModel.captureManually()
-            } label: {
-                ZStack {
-                    Circle()
-                        .stroke(Color.white, lineWidth: 4)
-                        .frame(width: 70, height: 70)
-
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 58, height: 58)
-                }
-            }
-
-            Spacer()
-
-            // Auto-capture toggle (right, smaller)
-            Button {
-                viewModel.toggleAutoCapture()
-            } label: {
-                ZStack {
-                    Circle()
-                        .stroke(viewModel.autoCaptureEnabled ? Color.green : Color.white.opacity(0.5), lineWidth: 2)
-                        .frame(width: 50, height: 50)
-
-                    Circle()
-                        .fill(viewModel.autoCaptureEnabled ? Color.green.opacity(0.3) : Color.gray.opacity(0.3))
-                        .frame(width: 44, height: 44)
-
-                    Text("AUTO")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(viewModel.autoCaptureEnabled ? .green : .white.opacity(0.6))
-                }
-            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
-        .padding(.horizontal, 40)
-    }
-
-    // MARK: - Scene Capture Controls (v4)
-
-    private var sceneCaptureControls: some View {
-        VStack(spacing: 12) {
-            // Start Scene Capture button
-            Button {
-                viewModel.startSceneCapture()
-            } label: {
-                HStack {
-                    Image(systemName: "pano")
-                        .font(.title2)
-                    Text("Capture Scene")
-                        .font(.headline)
-                }
-                .foregroundColor(.black)
-                .padding(.horizontal, 30)
-                .padding(.vertical, 16)
-                .background(Color.yellow)
-                .clipShape(Capsule())
-            }
-
-            Text("Pan left and right to capture 3 angles")
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.7))
-        }
-    }
-
-    // MARK: - Smart Pan Controls (v5)
-
-    private var smartPanControls: some View {
-        VStack(spacing: 12) {
-            // Start Smart Pan button
-            Button {
-                viewModel.startSmartPan()
-            } label: {
-                HStack {
-                    Image(systemName: "viewfinder")
-                        .font(.title2)
-                    Text("Start Smart Pan")
-                        .font(.headline)
-                }
-                .foregroundColor(.black)
-                .padding(.horizontal, 30)
-                .padding(.vertical, 16)
-                .background(Color.cyan)
-                .clipShape(Capsule())
-            }
-
-            Text("Pan slowly - subjects auto-captured at 1x + 4x")
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.7))
-        }
+        .frame(height: 100)
     }
 }
 
@@ -593,11 +255,17 @@ private struct AspectRatioFramingOverlay: View {
             )
 
             ZStack {
-                Path { path in
-                    path.addRect(CGRect(origin: .zero, size: size))
-                    path.addRect(frameRect)
+                ZStack {
+                    Rectangle().fill(.ultraThinMaterial)
+                    Color.black.opacity(0.55)
                 }
-                .fill(Color.black.opacity(0.45), style: FillStyle(eoFill: true))
+                .mask {
+                    Path { path in
+                        path.addRect(CGRect(origin: .zero, size: size))
+                        path.addRect(frameRect)
+                    }
+                    .fill(style: FillStyle(eoFill: true))
+                }
 
                 CompositionOverlayView(gridType: gridType)
                     .frame(width: frameWidth, height: frameHeight)
@@ -618,30 +286,149 @@ private struct AspectRatioFramingOverlay: View {
 
 struct LensPickerView: View {
     let currentLens: CameraLens
+    let iconAngle: Double
     let onLensSelected: (CameraLens) -> Void
 
+    private let lenses = CameraLens.allCases
+
     var body: some View {
-        HStack(spacing: 12) {
-            ForEach(CameraLens.allCases) { lens in
-                Button {
-                    onLensSelected(lens)
-                } label: {
-                    Text(lens.icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(currentLens == lens ? .black : .white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(currentLens == lens ? Color.yellow : Color.white.opacity(0.2))
-                        )
+        VStack(spacing: 8) {
+            ForEach(0..<2, id: \.self) { row in
+                HStack(spacing: 8) {
+                    ForEach(0..<3, id: \.self) { column in
+                        let index = row * 3 + column
+                        if index < lenses.count {
+                            lensButton(lenses[index])
+                        } else {
+                            Color.clear.frame(width: 36, height: 36)
+                        }
+                    }
                 }
             }
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(10)
         .background(.ultraThinMaterial)
-        .clipShape(Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func lensButton(_ lens: CameraLens) -> some View {
+        Button {
+            onLensSelected(lens)
+        } label: {
+            Text(lens.icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(currentLens == lens ? .black : .white)
+                .rotationEffect(.degrees(iconAngle))
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle()
+                        .fill(currentLens == lens ? Color.yellow : Color.white.opacity(0.2))
+                )
+        }
+    }
+}
+
+// MARK: - Feature Box
+
+struct FeatureButtonBox: View {
+    let iconAngle: Double
+    @ObservedObject var viewModel: CameraViewModel
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                featureButton(
+                    isActive: viewModel.timerSeconds > 0,
+                    action: { viewModel.cycleTimer() }
+                ) {
+                    if viewModel.timerSeconds > 0 {
+                        Text("\(viewModel.timerSeconds)s")
+                            .font(.system(size: 12, weight: .semibold))
+                    } else {
+                        Image(systemName: "timer")
+                    }
+                }
+
+                featureButton(
+                    isActive: viewModel.flashMode != .off,
+                    action: { viewModel.cycleFlash() }
+                ) {
+                    Image(systemName: flashIcon)
+                }
+            }
+
+            HStack(spacing: 8) {
+                featureButton(
+                    isActive: viewModel.burstEnabled,
+                    action: { viewModel.toggleBurst() }
+                ) {
+                    Image(systemName: "square.stack.3d.down.right")
+                }
+
+                featureButton(
+                    isActive: viewModel.isExposureLocked,
+                    action: { viewModel.toggleExposureLock() }
+                ) {
+                    Image(systemName: viewModel.isExposureLocked ? "lock.fill" : "lock.open")
+                }
+
+                featureButton(
+                    isActive: viewModel.portraitEnabled,
+                    action: { viewModel.togglePortrait() }
+                ) {
+                    Image(systemName: "camera.aperture")
+                }
+            }
+        }
+        .padding(10)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
+    private var flashIcon: String {
+        switch viewModel.flashMode {
+        case .on: return "bolt.fill"
+        case .auto: return "bolt.badge.a.fill"
+        default: return "bolt.slash.fill"
+        }
+    }
+
+    private func featureButton<Label: View>(
+        isActive: Bool,
+        action: @escaping () -> Void,
+        @ViewBuilder label: () -> Label
+    ) -> some View {
+        Button(action: action) {
+            label()
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(isActive ? .black : .white)
+                .rotationEffect(.degrees(iconAngle))
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle()
+                        .fill(isActive ? Color.yellow : Color.white.opacity(0.2))
+                )
+        }
+    }
+}
+
+// MARK: - Focus Indicator
+
+private struct FocusIndicatorView: View {
+    @Binding var bias: Float
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.yellow, lineWidth: 1.5)
+                .frame(width: 76, height: 76)
+
+            Slider(value: $bias, in: -2...2)
+                .tint(.yellow)
+                .frame(width: 110)
+                .rotationEffect(.degrees(-90))
+                .offset(x: 80)
+        }
     }
 }
 
@@ -771,4 +558,8 @@ private struct CameraLevelIndicator: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
+}
+
+#Preview {
+    CameraView()
 }

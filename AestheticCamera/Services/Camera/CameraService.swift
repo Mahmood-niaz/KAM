@@ -3,7 +3,7 @@ import UIKit
 
 protocol CameraServiceDelegate: AnyObject {
     func cameraService(_ service: CameraService, didOutput pixelBuffer: CVPixelBuffer, timestamp: CMTime)
-    func cameraService(_ service: CameraService, didCapturePhoto image: UIImage)
+    func cameraService(_ service: CameraService, didCapturePhoto data: Data)
     func cameraServiceDidFail(_ service: CameraService, error: Error)
 }
 
@@ -27,6 +27,7 @@ final class CameraService: NSObject {
     // Actual zoom factors for each lens (determined from device)
     // For builtInTripleCamera, zoom factor 1.0 = ultra-wide, not wide!
     // These are the internal AVFoundation zoom factors, not user-facing values
+    private var ultrawideZoomFactor: CGFloat = 1.0   // 0.5x user-facing (physical ultra-wide)
     private var wideZoomFactor: CGFloat = 2.0        // 1x user-facing (physical lens)
     private var zoom2xFactor: CGFloat = 4.0          // 2x user-facing (digital crop of 1x)
     private var telephotoZoomFactor: CGFloat = 8.0   // 4x user-facing (physical telephoto lens)
@@ -43,6 +44,8 @@ final class CameraService: NSObject {
     /// Get the actual AVFoundation zoom factor for a given lens based on the current device
     func zoomFactor(for lens: CameraLens) -> CGFloat {
         switch lens {
+        case .ultrawide:
+            return ultrawideZoomFactor
         case .wide:
             return wideZoomFactor
         case .zoom2x:
@@ -91,7 +94,7 @@ final class CameraService: NSObject {
     private func setupVideoDevice() -> Bool {
         // Try to get triple camera first (iPhone Pro models)
         let discoverySession = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.builtInTripleCamera, .builtInDualCamera, .builtInWideAngleCamera],
+            deviceTypes: [.builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera],
             mediaType: .video,
             position: .back
         )
@@ -141,6 +144,8 @@ final class CameraService: NSObject {
             // The first switch-over is where wide (1x) lens activates
             // We start at 1x (wide), skipping ultra-wide
 
+            ultrawideZoomFactor = 1.0
+
             if switchOverFactors.count >= 1 {
                 // The wide lens (1x) activates at this zoom factor
                 wideZoomFactor = CGFloat(truncating: switchOverFactors[0])  // typically 2.0
@@ -154,6 +159,15 @@ final class CameraService: NSObject {
                 // 8x = eight times the wide zoom factor (digital crop of 4x telephoto)
                 zoom8xFactor = min(wideZoomFactor * 8.0, device.maxAvailableVideoZoomFactor)  // typically 16.0
             }
+        } else if device.deviceType == .builtInDualWideCamera {
+            // Dual wide (iPhone 13 and similar): ultra-wide (0.5x) at zoom 1.0 -> wide (1x) at switch-over
+            ultrawideZoomFactor = 1.0
+            if let switchOver = switchOverFactors.first {
+                wideZoomFactor = CGFloat(truncating: switchOver)
+            }
+            zoom2xFactor = wideZoomFactor * 2.0
+            telephotoZoomFactor = min(wideZoomFactor * 4.0, device.maxAvailableVideoZoomFactor)
+            zoom8xFactor = min(wideZoomFactor * 8.0, device.maxAvailableVideoZoomFactor)
         } else if device.deviceType == .builtInDualCamera {
             // Dual camera: wide (1x) -> telephoto
             // For dual camera, zoom factor 1.0 = wide lens
@@ -197,6 +211,13 @@ final class CameraService: NSObject {
         if captureSession.canAddOutput(photoOutput) {
             captureSession.addOutput(photoOutput)
         }
+
+        // Allow the largest photo size the active format supports (full sensor resolution)
+        if let largest = videoDevice?.activeFormat.supportedMaxPhotoDimensions.last {
+            photoOutput.maxPhotoDimensions = largest
+        }
+
+        photoOutput.isDepthDataDeliveryEnabled = photoOutput.isDepthDataDeliverySupported
 
         // Configure photo output connection to match video preview
         if let connection = photoOutput.connection(with: .video) {
@@ -299,9 +320,68 @@ final class CameraService: NSObject {
         }
     }
 
+    // MARK: - Focus & Exposure
+
+    /// devicePoint is in capture-device coordinates (0-1, origin top-left of sensor).
+    func focus(at devicePoint: CGPoint) {
+        configureVideoDevice { device in
+            if device.isFocusPointOfInterestSupported {
+                device.focusPointOfInterest = devicePoint
+            }
+            if device.isFocusModeSupported(.continuousAutoFocus) {
+                device.focusMode = .continuousAutoFocus
+            }
+            if device.isExposurePointOfInterestSupported {
+                device.exposurePointOfInterest = devicePoint
+            }
+            if device.isExposureModeSupported(.continuousAutoExposure) {
+                device.exposureMode = .continuousAutoExposure
+            }
+        }
+    }
+
+    func setAutoLocked(_ locked: Bool) {
+        configureVideoDevice { device in
+            if device.isFocusModeSupported(locked ? .locked : .continuousAutoFocus) {
+                device.focusMode = locked ? .locked : .continuousAutoFocus
+            }
+            if device.isExposureModeSupported(locked ? .locked : .continuousAutoExposure) {
+                device.exposureMode = locked ? .locked : .continuousAutoExposure
+            }
+        }
+    }
+
+    func setExposureBias(_ bias: Float) {
+        configureVideoDevice { device in
+            let clamped = min(max(bias, device.minExposureTargetBias), device.maxExposureTargetBias)
+            device.setExposureTargetBias(clamped, completionHandler: nil)
+        }
+    }
+
+    private func configureVideoDevice(_ body: @escaping (AVCaptureDevice) -> Void) {
+        guard let device = videoDevice else { return }
+        sessionQueue.async {
+            do {
+                try device.lockForConfiguration()
+                body(device)
+                device.unlockForConfiguration()
+            } catch {
+                print("Device configuration failed: \(error)")
+            }
+        }
+    }
+
     // MARK: - Photo Capture
 
-    func capturePhoto() {
+    func capturePhoto(flashMode: AVCaptureDevice.FlashMode, burstCount: Int, portrait: Bool) {
+        for index in 0..<max(burstCount, 1) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.5) { [weak self] in
+                self?.captureSingle(flashMode: flashMode, portrait: portrait)
+            }
+        }
+    }
+
+    private func captureSingle(flashMode: AVCaptureDevice.FlashMode, portrait: Bool) {
         // Update photo output rotation to match device orientation BEFORE capture
         if let connection = photoOutput.connection(with: .video) {
             let rotationAngle = rotationAngleForCurrentOrientation()
@@ -311,8 +391,11 @@ final class CameraService: NSObject {
         }
 
         let settings = AVCapturePhotoSettings()
-        // Use maximum quality for captures
+        settings.flashMode = photoOutput.supportedFlashModes.contains(flashMode) ? flashMode : .off
+        settings.isDepthDataDeliveryEnabled = portrait && photoOutput.isDepthDataDeliveryEnabled
+        // Use maximum quality and full sensor resolution for captures
         settings.photoQualityPrioritization = .quality
+        settings.maxPhotoDimensions = photoOutput.maxPhotoDimensions
 
         photoOutput.capturePhoto(with: settings, delegate: self)
     }
@@ -355,6 +438,30 @@ extension CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 }
 
+// MARK: - Portrait Blur
+
+extension CameraService {
+    /// Returns a JPEG with the background blurred from depth data, or nil when no depth was captured.
+    func portraitBlurredData(for photo: AVCapturePhoto) -> Data? {
+        guard let depthData = photo.depthData,
+              let cgImage = photo.cgImageRepresentation() else { return nil }
+
+        let orientation = Int32((photo.metadata[kCGImagePropertyOrientation as String] as? UInt32) ?? 1)
+        let image = CIImage(cgImage: cgImage).oriented(forExifOrientation: orientation)
+        let disparity = depthData.converting(toDepthDataType: kCVPixelFormatType_DisparityFloat16).depthDataMap
+        let disparityImage = CIImage(cvPixelBuffer: disparity).oriented(forExifOrientation: orientation)
+
+        guard let filter = CIFilter(name: "CIDepthBlurEffect") else { return nil }
+        filter.setValue(image, forKey: kCIInputImageKey)
+        filter.setValue(disparityImage, forKey: kCIInputDisparityImageKey)
+        filter.setValue(8.0, forKey: "inputAperture")
+
+        guard let output = filter.outputImage,
+              let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+        return CIContext().jpegRepresentation(of: output, colorSpace: colorSpace, options: [:])
+    }
+}
+
 // MARK: - AVCapturePhotoCaptureDelegate
 
 extension CameraService: AVCapturePhotoCaptureDelegate {
@@ -368,22 +475,14 @@ extension CameraService: AVCapturePhotoCaptureDelegate {
             return
         }
 
-        guard let imageData = photo.fileDataRepresentation(),
-              let image = UIImage(data: imageData) else {
+        // Use depth-blurred JPEG when depth was captured, otherwise the original encoded data
+        let imageData = portraitBlurredData(for: photo) ?? photo.fileDataRepresentation()
+        guard let imageData else {
             return
         }
 
-        // Apply correct orientation based on device orientation
-        let orientedImage = self.applyOrientation(to: image)
-
         DispatchQueue.main.async {
-            self.delegate?.cameraService(self, didCapturePhoto: orientedImage)
+            self.delegate?.cameraService(self, didCapturePhoto: imageData)
         }
-    }
-
-    private func applyOrientation(to image: UIImage) -> UIImage {
-        // Since we set videoRotationAngle before capture, the image data
-        // should already be correctly oriented. Return as-is.
-        return image
     }
 }
