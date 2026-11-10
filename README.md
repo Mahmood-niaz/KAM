@@ -1,4 +1,4 @@
-# Aesthetic Camera
+# KAM
 
 An iOS camera app that uses AI-powered composition analysis to help capture aesthetically pleasing photos.
 
